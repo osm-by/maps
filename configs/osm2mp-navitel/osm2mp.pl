@@ -90,7 +90,7 @@ my $nametaglist     = "name,ref,int_ref,addr:housenumber";
 
 # ??? make command-line parameters?
 my @housenamelist   = qw{ addr:housenumber addr:housename };
-my @citynamelist    = qw{ place_name name };
+my @citynamelist    = qw{ addr:place place_name name };
 my @regionnamelist  = qw{ addr:region is_in:region addr:state is_in:state };
 my @countrynamelist = qw{ addr:country is_in:country_code is_in:country };
 
@@ -755,7 +755,12 @@ while ( my $line = <IN> ) {
                     if ( $housenumber && $waytag{'addr:street'} ) {
                         print  "HouseNumber=$housenumber\n";
                         printf "StreetDesc=%s\n", convert_string( $waytag{'addr:street'} );
-                        if ( $city ) {
+			if ( exists $waytag{'addr:place'} ) {
+			    print "CityName="    . convert_string( $waytag{'addr:place'} )      . "\n";
+			    print "RegionName="  . convert_string( $waytag{'addr:region'} )    . "\n"      if $waytag{'addr:region'};
+			    print "CountryName=" . convert_string( $waytag{'addr:country'} )   . "\n"      if $waytag{'addr:country'};
+			}
+                        elsif ( $city ) {
                             print "CityName="    . $city->{name}      . "\n";
                             print "RegionName="  . $city->{region}    . "\n"      if $city->{region};
                             print "CountryName=" . $city->{country}   . "\n"      if $city->{country};
@@ -1450,7 +1455,7 @@ if ( $routing ) {
         printf "Data%d=(%s)\n",     $llev, join( q{), (}, @node{@{$road->{chain}}} );
         printf "RoadID=%d\n",       $roadid{$roadid};
         printf "RouteParams=%s\n",  $rp;
-        
+       
         if ( $road->{city} ) {
             my $rcity = $city{$road->{city}};
             print "CityName=$rcity->{name}\n";
@@ -1902,9 +1907,9 @@ sub AddPOI {
         my $city = $city{ FindCity( $param{nodeid} ) }  if  exists $param{nodeid};
         my $city = $city{ FindCity( $param{latlon} ) }  if  exists $param{latlon};
 	if ( exists $tag{'addr:place'} ) {
-	    print "CityName=" . convert_string($tag{'addr:place'}) . "\n";
-	    print "RegionName=" . convert_string($tag{'addr:region'}) . "\n";
-	    print "CountryName=" . convert_string($tag{'addr:country'}) . "\n";
+	   print "CityName=" . convert_string( $tag{'addr:place'} ) . "\n";
+	   print "RegionName=" . convert_string( $tag{'addr:region'} ) . "\n"       if  $tag{'addr:region'};
+	   print "CountryName=" . convert_string( $tag{'addr:country'} ) . "\n"     if  $tag{'addr:country'};
 	}
         elsif ( $city ) {
             print "CityName=$city->{name}\n";
