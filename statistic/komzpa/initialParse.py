@@ -47,6 +47,7 @@ class osmParser(handler.ContentHandler):
     self.Ways = {}
     self.Borders = {}
     self.Places = {}
+    self.DatesGraph = {}
     self.RoutableWays = []
     self.BPlaces = {}
     self.currentUser = ""            # user who created latest obj
@@ -437,7 +438,15 @@ if(op < 1) {op += 0.1;	tipobj.style.opacity = op;tipobj.style.filter = 'alpha(op
           self.FillTile = len(self.Tiles[i][j])
 
 
-
+    self.DatesCSV = open('graph.csv','w')
+    daysSorted = self.DatesGraph.keys()
+    daysSorted.sort()
+    for day in daysSorted:
+      self.DatesCSV.write("%s\t%s\t%s\t%s\n"%(day,self.DatesGraph[day][0],self.DatesGraph[day][1],self.DatesGraph[day][2]) )
+    self.DatesCSV.close()
+    
+    
+    
     speed = (self.NodesCount+self.WaysCount+self.RelationsCount)/(parse(self.LastChange)-parse(self.FirstChange))*86400
     indexFile.write( "<p>Average mapping speed: <b>%f</b> obj/day</p>" % (speed, ))
     indexFile.write( "<p>Tiles fill(avg/max): <b>%f</b>/<b>%s</b></p>" % (self.NodesCount/(self.TilesCreated*1.),self.FillTile, ))
@@ -596,16 +605,21 @@ if(op < 1) {op += 0.1;	tipobj.style.opacity = op;tipobj.style.filter = 'alpha(op
       self.useTiles=0
       uid=int(attrs.get('uid',0))
       self.currentUser = uid
-      self.UserTasks(uid, attrs.get('user',""), attrs.get('timestamp'))
+      date = attrs.get('timestamp')
+      self.UserTasks(uid, attrs.get('user',""), date)
+      day = date[0:10]
+      if day not in self.DatesGraph:
+       self.DatesGraph[day] = [0,0,0]
+      
 
 
       if name == 'node':
+        self.DatesGraph[day][0] += 1
         id = int(attrs.get('id'))
         self.nodeID = id
         lat = float(attrs.get('lat'))
         lon = float(attrs.get('lon'))
 	self.UserLatLon(uid,lat,lon)
-        date = attrs.get('timestamp')
         self.Nodes[id] = (lat,lon)
         tilelat = int(lat*self.ZoomLevel)
         tilelon = int(lon*self.ZoomLevel)
@@ -639,6 +653,7 @@ if(op < 1) {op += 0.1;	tipobj.style.opacity = op;tipobj.style.filter = 'alpha(op
 
 
       elif name == 'way':
+        self.DatesGraph[day][1] += 1
         id = int(attrs.get('id'))
         self.WayID = id
         self.WaysCount += 1
@@ -650,6 +665,7 @@ if(op < 1) {op += 0.1;	tipobj.style.opacity = op;tipobj.style.filter = 'alpha(op
          self.prompt = 1000
          sys.stderr.write( "%1.3fM ways (%s borders)\n" % (float(self.WaysCount) / 1000000.0, self.BordersCount))
       elif name == 'relation':
+        self.DatesGraph[day][2] += 1
 	self.currentMembers = []
         self.User[uid]["Relations"] += 1
 	self.RelationsCount += 1
