@@ -1,0 +1,5 @@
+Файлы из ./styles/* копируется в \\RoadGIS\Palette
+Файлы и каталоги из ./fill/* копируются в \\RoadGIS\Images\
+
+Загружаем RoadGIS
+Выбираем Опции-Палитра-открыть и выбираем «roads of belarus»
