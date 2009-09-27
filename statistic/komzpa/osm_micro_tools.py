@@ -24,6 +24,8 @@ def linkBboxMarker (bbox, marker):
   a1,a2,a3,a4 = bbox
   a5,a6 = marker
   return "<a href=http://openstreetmap.org/?minlat=%s&minlon=%s&maxlat=%s&maxlon=%s&mlat=%s&mlon=%s&box=yes>bbox</a>"%(a1,a2,a3,a4,a5,a6)
+def linkMarker (lat, lon, name):
+  return "<a href='http://openstreetmap.org/?lat=%s&lon=%s&zoom=15'>%s</a>"%(lat,lon,name)
 def linkWayMap (WayID):
   return "<a href=http://openstreetmap.org/?way=%s>%s</a>" % (WayID,WayID)
 
