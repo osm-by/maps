@@ -6,6 +6,8 @@ import sys
 import math
 from xml.sax import make_parser, handler
 from pngcanvas import PNGCanvas
+import gettext
+gettext.install('osm-statistics')
 
 import xml
 import datetime
@@ -70,7 +72,7 @@ class osmParser(handler.ContentHandler):
     self.TagsList = {}
     self.ZoomLevel = 200  #130
     self.Tiles = {}
-    self.FixMe = '<b>FixMe</b>'
+    self.FixMe = _('<b>FixMe</b>')
     self.AddrRelLinks = ''
     self.MaxTagsElems = 20
     self.LastChange = ''
@@ -78,30 +80,33 @@ class osmParser(handler.ContentHandler):
     self.WaysPassed = []
     self.CountryName = sys.argv[1]                            # First argument - Country name
 
+
+    htmlheader = "<html><head><title>%%s%s %s: %%s</title><meta http-equiv=Content-Type content=\"text/html; charset=UTF-8\" /><script src=\"http://me.komzpa.net/sorttable.js\"></script></head><body>" % (_("OSM Stats"),self.CountryName)
+    htmltablestart = "<table class=\"sortable\" sytle=\"width: 100%; border: 1px solid gray\" border=1 width=100%>"
+    def htmltablerow (cols):
+        tr = "<tr>"
+        for col in cols:
+	  if type(col) == type(float()):
+	    tr = tr + "<td align=\"right\">%.3f</td>" % (col,)
+	  else:
+	    tr = tr + "<td>%s</td>" % (col,)
+        return tr+"</tr>"
     self.warningsFile = open('warnings.html','w')
-    self.warningsFile.write("<html><head><title>OSM Stats %s: Warnings</title>" % (self.CountryName,))
-    self.warningsFile.write("""
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-<script src="http://me.komzpa.net/sorttable.js"></script></head><body>
-<table class="sortable" sytle="width: 100%; border: 1px solid gray" border=1 width=100%>
-<tr><td>Warning type<td>Шлях""")
-
-
+    self.warningsFile.write(htmlheader % (" ", _("Warnings")))
+    self.warningsFile.write(htmltablestart);
+    self.warningsFile.write(htmltablerow((_("Warning type"), _("Way"))))
     try:
       parser = make_parser()
       parser.setContentHandler(self)
       parser.parse(filename)
     except xml.sax._exceptions.SAXParseException:
-      sys.stderr.write( "Error loading %s\n" % filename)
+      sys.stderr.write( _("Error loading %s\n") % filename)
 
 
 
 ## Dealing with BorderList
-    sys.stderr.write('Sort borderlist')
     self.BorderList.sort((lambda x,y: int((y[0]-x[0])*100000)))
-    sys.stderr.write('.\n')
-
-    self.bordersFile = open('borders.html','w')
+    
     self.unnamedBordersFile = open('unnamed.html','w')
 
 
@@ -118,33 +123,21 @@ class osmParser(handler.ContentHandler):
                  self.unnamedBordersFile.write('</table></body></html>')
                  self.unnamedBordersFile.close()
                  self.unnamedBordersFile = open('unnamed%s.html'%(int(in_unnamed/perpage)+1),'w')
-                 self.unnamedBordersFile.write("<html><head><title>OSM Stats %s: Unnamed</title>" % self.CountryName)
-                 self.unnamedBordersFile.write("""<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-
-<script src="http://me.komzpa.net/sorttable.js"></script></head><body>
-    <table class="sortable" sytle="width: 100%; border: 1px solid gray" border=1 width=100%>
-<tr><td>Плошча [км<sup>2</sup>]<td>Nodes<td>Плотнасць [nodes/км<sup>2</sup>]<td>Спасылка</a>
-""")
+                 self.unnamedBordersFile.write(htmlheader % (" ", _("Unnamed borders")) )
+                 self.unnamedBordersFile.write(htmltablestart)
+                 self.unnamedBordersFile.write(htmltablerow(( _("Area [km<sup>2</sup>]"),_("Nodes"),_("Density [nodes/km<sup>2</sup>]"),_("Link"))))
                  in_unnamed += 1
            bf = self.unnamedBordersFile
-           bf.write("<tr><td>%.3f<td>%d<td>%.3f<td>%s\n" % \
-      (area,\
-       nodesInWay,\
-       dens,\
-       linkBbox(bbox)))
-    self.bordersFile.write('</table></body></html>')
-    self.bordersFile.close()
+           bf.write(htmltablerow((area,  nodesInWay, dens,  linkBbox(bbox))))
     self.unnamedBordersFile.write('</table></body></html>')
     self.unnamedBordersFile.close()
 
 
     filename = open('unnamed.html','w')
-    filename.write("<html><head><title>OSM Stats %s: Unamed borders</title>" % self.CountryName)
-    filename.write("""<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-
-<script src="http://me.komzpa.net/sorttable.js"></script></head><body>Unnamed borders<ul>""")
+    filename.write(htmlheader % (" ", _("Unnamed borders pages list")) )
+    filename.write("<body><h2>%s</h2><ul>" % _("Unnamed borders pages list"))
     for i in range(1,int(in_unnamed/perpage)+2):
-      filename.write('<li><a href=unnamed%s.html>Page %s</a>'%(i,i))
+      filename.write('<li><a href=unnamed%s.html>%s %s</a>'%(i,_("Page"),i))
     filename.write("</ul></body></html>")
     filename.close()
 
@@ -157,21 +150,15 @@ class osmParser(handler.ContentHandler):
       os.mkdir("./" + dirname + "/")
     filename = open('addr/index.html','w')
     filesStarted = ['addr/index.html']
-    filename.write("<html><head><title>OSM Stats %s: Address</title>" % self.CountryName)
-    filename.write("""<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <script src="http://me.komzpa.net/sorttable.js"></script></head><body>""")
+    filename.write(htmlheader % (" ", _("Postal address relations")) )
     def AddrTreeRecurse (top, wayback="» "):
 
       if top in self.WaysPassed:
-        self.warningsFile.write ("<td>double-pass on address relation<td>%s" % top)
+        self.warningsFile.write (htmltablerow((_("double-pass on address relation"),top)))
         return
       wayback = wayback + "%s<a href=%s.html>%s</a> » " % (linkRelationIcon(top),top, self.Address[top]["tags"].get("name",top) )
       filename = open('addr/%s.html'%(top,),'w')
-      filename.write("<html><head><title>OSM Stats %s: %s</title>" % (self.CountryName, self.Address[top]["tags"].get("name", "Unknown address")))
-      filename.write("""<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-      <script src="http://me.komzpa.net/sorttable.js"></script></head><body>""")#<div style="float:right; width: 200px; background-color: #eeeeff;">ppp """)
-
-
+      filename.write(htmlheader % ("", self.Address[top]["tags"].get("name", "Unknown address")))
       filename.write(" %s<p>" % wayback)
       nodes = 0
       ways = 0
@@ -180,30 +167,30 @@ class osmParser(handler.ContentHandler):
       for ctype, child in self.Address[top]["child"]:
        if ctype == 'node':
          if nodes == 0:
-           filename.write("""<table class="sortable" sytle="border: 1px solid gray" border=1>
-           <tr><td>Name<td>Density<td>Area<td>Nodes<td>Type<td>Link""")
+           filename.write(htmltablestart)
+           filename.write(htmltablerow((_("Name"),_("Density"),_("Area"),_("Nodes"),_("Type"),_("Link"))))
          nodes += 1
          if int(child) in self.BPlaces:
            area,nodesIn, bbox, tags = self.BPlaces[int(child)]
-           filename.write("<tr><td>%s<td>%.3f<td>%.3f<td>%s<td>%s<td>%s"%(\
+           filename.write(htmltablerow((\
             tags["name"], \
             1.* nodesIn / area, \
             area, \
             nodesIn, \
             tags["place"], \
             linkBboxMarker(bbox, (tags["lat"],tags["lon"])), \
-            ))
+            )))
          elif int(child) in self.Places:
-           filename.write("<tr><td>%s<td>%s<td>%s<td>%s<td>%s<td>%s"%(\
+           filename.write(htmltablerow((\
             self.Places[int(child)].get("name", child), \
             " ", \
             " ", \
             " ", \
-            self.Places[int(child)].get("place", "??? unknown"), \
+            self.Places[int(child)].get("place", _("??? unknown")), \
             linkNode(child), \
-            ))
+            )))
          else:
-           filename.write("<tr><td>%s"%(linkNode(child),) )
+           filename.write(htmltablerow((linkNode(child),) ))
       filename.write("</table>")
       for ctype, child in self.Address[top]["child"]:
        if ctype == 'way':
@@ -211,19 +198,24 @@ class osmParser(handler.ContentHandler):
       for ctype, child in self.Address[top]["child"]:
        if ctype == 'relation':
          if rels == 0:
-           filename.write("<h3>Relations</h3>")
+           filename.write(_("<h3>Relations</h3>"))
          rels += 1
          if child in self.Address:
            filename.write("<br>%s<a href=%s.html>%s</a> " %(linkRelationIcon(child),child, self.Address[child]["tags"].get("name",child) ))
            AddrTreeRecurse(child,wayback)
          else:
            filename.write(linkRelation(child))
+    
 
 
       #print self.BPlaces
       ##filename.write(str(self.Address[top]["child"]))
       filename.write("</body></html>")
       filename.close()
+
+
+
+
 
     while self.Address:
       top = self.Address.keys()[0]
@@ -264,12 +256,12 @@ class osmParser(handler.ContentHandler):
      alpha = k[0]
      if alpha not in ("a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"):
 	alpha = "other"
+	tt = _("other")
      if alpha not in alphabet:
 	alphabet.append(alpha)
 	filename = open("tags-%s.html"%(alpha,),'w')
-	filename.write("<html><head><title>[%s]OSM Stats %s: Tags</title>" % (alpha, self.CountryName))
-	filename.write("""<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-<script src="http://me.komzpa.net/sorttable.js"></script>
+	filename.write(htmlheader % ("[%s]" % _(alpha), _("Tags")))
+	filename.write("""
 <script type="text/javascript">
 var d = document;
 var offsetfromcursorY=15 // y offset of tooltip
@@ -315,17 +307,17 @@ if(op < 1) {op += 0.1;	tipobj.style.opacity = op;tipobj.style.filter = 'alpha(op
        z = " "
        if self.MaxTagsElems > len(self.TagsList[k][v][objN("way")]):
 	if self.TagsList[k][v][objN("way")]:
-	    z = z + "Ways: "
+	    z = z + _("Ways: ")
 	for p in self.TagsList[k][v][objN("way")]:
 	    z = z + linkWay(p)+" "
        if self.MaxTagsElems > len(self.TagsList[k][v][objN("node")]):
 	if self.TagsList[k][v][objN("node")]:
-	    z = z + "<br>Nodes: "
+	    z = z +"<br>"+ _("Nodes: ")
 	for p in self.TagsList[k][v][objN("node")]:
 	    z = z + linkNode(p)+" "
        if self.MaxTagsElems > len(self.TagsList[k][v][objN("relation")]):
 	if self.TagsList[k][v][objN("relation")]:
-	    z = z + "<br>Relations: "
+	    z = z + "<br>"+_("Relations: ")
 	for p in self.TagsList[k][v][objN("relation")]:
 	    z = z + linkRelation(p)+" "
        for p in uslist:
@@ -338,19 +330,14 @@ if(op < 1) {op += 0.1;	tipobj.style.opacity = op;tipobj.style.filter = 'alpha(op
       filename = open("tags-%s.html"%(alpha,),'a')
       filename.write("</table>")
       for link in alphabet:
-	filename.write("\n<a href=tags-%s.html> %s </a>| " % (link,link))
+	filename.write("\n<a href=tags-%s.html> %s </a>| " % (link,_(link)))
       filename.write("</body></html>")
     filename.close()
 
     usersFile = open('users.html','w')
-    usersFile.write("<html><head><title>OSM Stats %s: Users</title>" % self.CountryName)
-    usersFile.write("""<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-
-<script src="http://me.komzpa.net/sorttable.js"></script></head><body>
-<table class="sortable" sytle="width: 100%; border: 1px solid gray" border=1 width=100%>
-<tr><td>Карыстальнік<td>Пункты<td>Шляхi<td>relations<td>%<td>obj/day<td>Першая дата<td>Апошняя дата<td>Спасылкі
-""")
-    sys.stderr.write('Sort userlist')
+    usersFile.write(htmlheader % (" ",_("Users")))
+    usersFile.write(htmltablestart)
+    usersFile.write(htmltablerow((_("User"), _("Nodes"), _("Ways"), _("Relations"), _("%"), _("Speed [obj/day]"), _("First known edit"), _("Latest known edit"), _("Links"))))
     userlist = self.User.keys()
     userlist.sort(lambda x,y: self.User[y]["Nodes"]-self.User[x]["Nodes"])
     for user in self.User.values():
@@ -361,9 +348,7 @@ if(op < 1) {op += 0.1;	tipobj.style.opacity = op;tipobj.style.filter = 'alpha(op
 	    self.FirstChange =  self.User[user]["FirstDate"]
 
 	speed = ((self.User[user]["Nodes"]+self.User[user]["Ways"]+self.User[user]["Relations"])/(parse(self.LastChange)-parse(self.User[user]["FirstDate"])+1))*86400
-        usersFile.write( "<tr><td><a href=\"http://openstreetmap.org/user/%s\">%s</a><td>%d<td>%d<td>%d <td align=right>%.3f%%</td><td align=right>%.3f<td>%s<td>%s<td><a href=\"http://openstreetmap.org/?mlat=%f&mlon=%f&minlat=%s&minlon=%s&maxlat=%s&maxlon=%s&box=yes\">CalcedHome</a>\n"% \
-		 (self.User[user]["Name"], \
-		 self.User[user]["Name"], \
+        usersFile.write(htmltablerow(((linkUser(self.User[user]["Name"]), \
 		 self.User[user]["Nodes"], \
 		 self.User[user]["Ways"], \
 		 self.User[user]["Relations"], \
@@ -371,61 +356,51 @@ if(op < 1) {op += 0.1;	tipobj.style.opacity = op;tipobj.style.filter = 'alpha(op
 		 speed,\
 		 self.User[user]["FirstDate"], \
 		 self.User[user]["LastDate"], \
-		 self.User[user]["lat"], \
-		 self.User[user]["lon"], \
-		 self.User[user]["minlat"], \
-		 self.User[user]["minlon"], \
-		 self.User[user]["maxlat"], \
-		 self.User[user]["maxlon"], \
-))
+		  
+		 "<a href=\"http://openstreetmap.org/?mlat=%f&mlon=%f&minlat=%s&minlon=%s&maxlat=%s&maxlon=%s&box=yes\">%s</a>" % \
+		      (self.User[user]["lat"], self.User[user]["lon"], self.User[user]["minlat"], self.User[user]["minlon"], self.User[user]["maxlat"], self.User[user]["maxlon"], _("CalcedHome")), \
+))))
 
     usersFile.write( "</table></body></html>")
     usersFile.close()
+
+    localLangs = _("name:be,name:en,name:ru")
+    localLangs = localLangs.split(",")
+    localLangs = tuple (localLangs)
+    
     pointsFile = open('points.html','w')
-    pointsFile.write("<html><head><title>OSM Stats %s: Points</title>" % self.CountryName)
-    pointsFile.write("""<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-
-<script src="http://me.komzpa.net/sorttable.js"></script></head><body>
-    <table class="sortable" sytle="width: 100%; border: 1px solid gray" border=1 width=100%>
-<tr><td>Назва<td>Назва[ru]<td>Назва[be]<td>Назва[en]<td>Тып<td>Спасылка</a>
-""" )
+    pointsFile.write(htmlheader % ("",_("Localities")))
+    pointsFile.write(htmltablestart)
+    pointsFile.write(htmltablerow((_("Name"),) + localLangs + ( _("Type"), _("Link"))))
     for PointNum in self.Places.keys():
-      placeZ = self.Places[PointNum]
-      place = {}
-      for tTag in ('name', 'name:be', 'name:en', 'name:ru', 'place','lat','lon'):
-       if tTag in placeZ:
-          place[tTag] = placeZ[tTag]
-       else:
-          place[tTag] = self.FixMe
-
-      pointsFile.write("<tr><td>%s<td>%s<td>%s<td>%s<td>%s<td><a href='http://openstreetmap.org/?lat=%s&lon=%s&zoom=15'>goto</a>" % \
-      (place['name'],\
-       place['name:ru'],\
-       place['name:be'],\
-       place['name:en'],\
-       place['place'], \
-       place['lat'],\
-       place['lon']))
+      place = self.Places[PointNum]
+      localLangsT = []
+      for langtag in localLangs:
+	localLangsT.append(place.get(langtag, self.FixMe))
+      localLangsT = tuple (localLangsT)
+      pointsFile.write(htmltablerow(
+      (place.get("name",self.FixMe),\
+        ) + localLangsT +  ( \
+       place['place'], linkMarker(place['lat'], place['lon'], _("goto") ) ) ))
     pointsFile.write( "</table></body></html>")
     pointsFile.close()
-    indexFile = open('index.html','w')
-    indexFile.write( "<html><head><title>OSM Stats %s by Komяpa</title>" % self.CountryName)
-    indexFile.write( """<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 
-<script src="http://me.komzpa.net/sorttable.js"></script></head><body>
-<h3>OSM Statistics for %s</h3>""" % self.CountryName)
-    indexFile.write( """<ul>
-<li><a href=users.html>users</a>
-<li><a href=points.html>points</a>""")
-    indexFile.write( "<li>address relations: %s" % self.AddrRelLinks )
-    indexFile.write( """
-<li><a href=warnings.html>warnings</a>
-<li><a href=borders.html>borders</a>
-<li><a href=unnamed.html>unnamed borders</a>
-<li><a href=route.html>routing subgraphs</a>
-<li>tags: """)
+
+
+    indexFile = open('index.html','w')
+    indexFile.write( htmlheader % ("Welcome to ",""))
+    indexFile.write( _("<h3>OSM Statistics for %s</h3>") % self.CountryName)
+    indexFile.write( _("<ul>"))
+    indexFile.write( _("<li><a href=users.html>users</a></li>"))
+    indexFile.write( _("<li><a href=points.html>points</a></li>"))
+    indexFile.write( _("<li>address relations: %s</li>") % self.AddrRelLinks )
+    indexFile.write( _("<li><a href=warnings.html>warnings</a></li>"))
+    indexFile.write( _("<li><a href=borders.html>borders</a></li>"))
+    indexFile.write( _("<li><a href=unnamed.html>unnamed borders</a></li>"))
+    indexFile.write( _("<li><a href=route.html>routing subgraphs</a></li>"))
+    indexFile.write( _("<li>tags: "))
     for alpha in alphabet:
-     indexFile.write("\n<a href=tags-%s.html>%s</a> | " % (alpha,alpha))
+     indexFile.write("\n<a href=tags-%s.html>%s</a> | " % (alpha,_(alpha)))
     indexFile.write( """</ul>
 <a href=density.png><img src="density.png" width=100%></a>
 """)
@@ -448,27 +423,27 @@ if(op < 1) {op += 0.1;	tipobj.style.opacity = op;tipobj.style.filter = 'alpha(op
     
     
     speed = (self.NodesCount+self.WaysCount+self.RelationsCount)/(parse(self.LastChange)-parse(self.FirstChange))*86400
-    indexFile.write( "<p>Average mapping speed: <b>%f</b> obj/day</p>" % (speed, ))
-    indexFile.write( "<p>Tiles fill(avg/max): <b>%f</b>/<b>%s</b></p>" % (self.NodesCount/(self.TilesCreated*1.),self.FillTile, ))
-    indexFile.write( "<p>Number of Nodes: <b>%s</b></p>" % (self.NodesCount, ))
-    indexFile.write( "<p>Number of Ways: <b>%s</b></p>" % (self.WaysCount, ))
-    indexFile.write( "<p>Number of Relations: <b>%s</b></p>" % (self.RelationsCount, ))
-    indexFile.write( "<p>Number of Borders/Places: <b>%s</b>/<b>%s</b></p>" % (self.BordersCount, self.PlacesCount))
-    indexFile.write( "<p>First update: <b>%s</b></p>" % (self.FirstChange, ))
-    indexFile.write( "<p>Last update: <b>%s</b></p>" % (self.LastChange, ))
+    indexFile.write( _("<p>Average mapping speed: <b>%f</b> obj/day</p>") % (speed, ))
+    indexFile.write( _("<p>Tiles fill(avg/max): <b>%f</b>/<b>%s</b></p>") % (self.NodesCount/(self.TilesCreated*1.),self.FillTile, ))
+    indexFile.write( _("<p>Number of Nodes: <b>%s</b></p>") % (self.NodesCount, ))
+    indexFile.write( _("<p>Number of Ways: <b>%s</b></p>") % (self.WaysCount, ))
+    indexFile.write( _("<p>Number of Relations: <b>%s</b></p>") % (self.RelationsCount, ))
+    indexFile.write( _("<p>Number of Borders/Places: <b>%s</b>/<b>%s</b></p>") % (self.BordersCount, self.PlacesCount))
+    indexFile.write( _("<p>First known update: <b>%s</b></p>") % (self.FirstChange, ))
+    indexFile.write( _("<p>Last update: <b>%s</b></p>") % (self.LastChange, ))
     indexFile.write("</body></html>")
     indexFile.close()
-
+ 
+    filename = open('oneline.inc.html','w')
+    filename.write("%s</a><td>%s</td><td>%s</td><td>%.3f</td><td>%.3f</td></tr>" % (self.CountryName,self.LastChange,len(self.User),speed,self.NodesCount/(self.TilesCreated*1.)))
+    filename.close()
 
 ### Making routing
 
     self.warningsFile = open('route.html','w')
-    self.warningsFile.write("<html><head><title>OSM Stats %s: Routes</title>" % (self.CountryName,))
-    self.warningsFile.write("""
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-<script src="http://me.komzpa.net/sorttable.js"></script></head><body>
-<table class="sortable" sytle="width: 100%; border: 1px solid gray" border=1 width=100%>
-<tr><td>Ways<td>FirstWay""")
+    self.warningsFile.write(htmlheader % ("",_("Routes")))
+    self.warningsFile.write(htmltablestart)
+    self.warningsFile.write(htmltablerow((_("Number of ways"),_("First way in group"))))
 
 
 
@@ -516,8 +491,8 @@ if(op < 1) {op += 0.1;	tipobj.style.opacity = op;tipobj.style.filter = 'alpha(op
 	      self.RoutableWays.remove(tway)
       numP += 1
     print  self.WayGroups
-    for i in range(0,numRoute):
-      self.warningsFile.write("\n<tr><td>%s<td>%s"%(self.WayGroups[i],linkWayMap(self.WayGroupsId[i])))
+    for i in range(1,numRoute):
+      self.warningsFile.write(htmltablerow((self.WayGroups[i],linkWayMap(self.WayGroupsId[i]))))
 
 
 ## Making pretty image
@@ -741,7 +716,7 @@ if(op < 1) {op += 0.1;	tipobj.style.opacity = op;tipobj.style.filter = 'alpha(op
              if lon<minlon:
                 minlon=lon
             else:
-             self.warningsFile.write("<tr><td>intersect<td><a href='http://openstreetmap.org/browse/way/%s'>%s</a>" % (self.WayID,self.WayID))
+             #self.warningsFile.write("<tr><td>intersect<td><a href='http://openstreetmap.org/browse/way/%s'>%s</a>" % (self.WayID,self.WayID))
              return 0
 #           for i in self.waynodes:
 #            if i in self.Nodes:
