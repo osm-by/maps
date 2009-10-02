@@ -708,7 +708,7 @@ while ( my $line = <IN> ) {
                 print "; ERROR: area WayID=$wayid is not closed at ($node{$chain[0]})\n";
             }
 
-            if ( !$bounds  ||  scalar @chainlist ) {
+            if ( (!$bounds  ||  scalar @chainlist) && $wayid!=59193 ) {		# skip border polygon for Minsk
 
                 print  "; WayID = $wayid\n";
                 print  "; $poly\n";
