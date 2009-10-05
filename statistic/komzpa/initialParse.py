@@ -3,6 +3,7 @@
 import sys
 import os
 import sys
+import cgi
 import math
 from xml.sax import make_parser, handler
 from pngcanvas import PNGCanvas
@@ -11,7 +12,7 @@ import gettext
 trans = gettext.GNUTranslations(open("%s/i18n/%s.mo" % (sys.path[0],sys.argv[1])))
 _ = trans.gettext
 
-
+from  calchome_xyn import calcHome
 import xml
 import datetime
 import time
@@ -73,7 +74,7 @@ class osmParser(handler.ContentHandler):
     self.MaxLoTile = 0
     self.FillTile = 0
     self.TagsList = {}
-    self.ZoomLevel = 200  #130
+    self.ZoomLevel = 200.0  #130
     self.Tiles = {}
     self.FixMe = _('<b>FixMe</b>')
     self.AddrRelLinks = ''
@@ -81,7 +82,10 @@ class osmParser(handler.ContentHandler):
     self.LastChange = ''
     self.FirstChange = 'z'
     self.WaysPassed = []
-    self.CountryName = sys.argv[2]                            # First argument - Country name
+    self.CountryName = sys.argv[2]                            # Second argument - Country name
+    self.DoRouting = True
+    if sys.argv[3] == "norouting":
+      self.DoRouting = False
 
 
     htmlheader = "<html><head><title>%%s%s %s: %%s</title><meta http-equiv=Content-Type content=\"text/html; charset=UTF-8\" /><script src=\"http://me.komzpa.net/sorttable.js\"></script></head><body>" % (_("OSM Stats"),self.CountryName)
@@ -336,7 +340,21 @@ if(op < 1) {op += 0.1;	tipobj.style.opacity = op;tipobj.style.filter = 'alpha(op
 	filename.write("\n<a href=tags-%s.html> %s </a>| " % (link,_(link)))
       filename.write("</body></html>")
     filename.close()
-
+    
+    kml = open('users.kml','w')
+    kml.write("""<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<kml xmlns="http://earth.google.com/kml/2.0">
+<Document>
+<Style id="rss">
+<IconStyle>
+<scale>0.5</scale>
+<Icon>
+<href>http://komzpa.net/favicon.ico</href>
+</Icon>
+</IconStyle>
+</Style>
+<Folder>""")
+    kml.write("<name>%s users</name>" % (self.CountryName) )
     usersFile = open('users.html','w')
     usersFile.write(htmlheader % (" ",_("Users")))
     usersFile.write(htmltablestart)
@@ -346,11 +364,36 @@ if(op < 1) {op += 0.1;	tipobj.style.opacity = op;tipobj.style.filter = 'alpha(op
     for user in self.User.values():
 	if user["LastDate"] > self.LastChange:
 	  self.LastChange = user["LastDate"]
+    ttt = """<Placemark>
+<name>%s</name>
+<description>&lt;h2&gt;&lt;a href=&quot;http://openstreetmap.org/user/%s&quot;&gt;%s&lt;/a&gt;&lt;/h2&gt;&lt;br&gt;
+Nodes: %s Ways: %s Relations: %s Since: %s
+
+</description>
+<styleUrl>#rss</styleUrl>
+<Point><coordinates>%s, %s</coordinates></Point>
+</Placemark>"""
+	
     for user in userlist:
 	if self.FirstChange > self.User[user]["FirstDate"]:
 	    self.FirstChange =  self.User[user]["FirstDate"]
-
+	CSList = []
+	for i in self.User[user]["changesets"].values():
+	  CSList.append([i["lat"],i["lon"],i["num"]])
+	CHLink = "&nbsp;"
+	if CSList:
+	 lat, lon = tuple(calcHome(CSList))
+	 escapedName = cgi.escape (self.User[user]["Name"])
+         CHLink = "<a href=\"http://openstreetmap.org/?mlat=%f&mlon=%f&minlat=%s&minlon=%s&maxlat=%s&maxlon=%s&box=yes\">%s</a>" % \
+		      (lat, lon, self.User[user]["minlat"], self.User[user]["minlon"], self.User[user]["maxlat"], self.User[user]["maxlon"], _("CalcedHome"))
+	 kml.write(ttt % (escapedName, escapedName, escapedName, self.User[user]["Nodes"], \
+		 self.User[user]["Ways"], \
+		 self.User[user]["Relations"], \
+		 self.User[user]["FirstDate"], \
+		 lon, lat) )
 	speed = ((self.User[user]["Nodes"]+self.User[user]["Ways"]+self.User[user]["Relations"])/(parse(self.LastChange)-parse(self.User[user]["FirstDate"])+1))*86400
+
+
         usersFile.write(htmltablerow(((linkUser(self.User[user]["Name"]), \
 		 self.User[user]["Nodes"], \
 		 self.User[user]["Ways"], \
@@ -359,11 +402,13 @@ if(op < 1) {op += 0.1;	tipobj.style.opacity = op;tipobj.style.filter = 'alpha(op
 		 speed,\
 		 self.User[user]["FirstDate"], \
 		 self.User[user]["LastDate"], \
-		  
-		 "<a href=\"http://openstreetmap.org/?mlat=%f&mlon=%f&minlat=%s&minlon=%s&maxlat=%s&maxlon=%s&box=yes\">%s</a>" % \
-		      (self.User[user]["lat"], self.User[user]["lon"], self.User[user]["minlat"], self.User[user]["minlon"], self.User[user]["maxlat"], self.User[user]["maxlon"], _("CalcedHome")), \
+		 CHLink 
+		 , \
 ))))
-
+    kml.write("""</Folder>
+</Document>
+</kml>""")
+    kml.close()
     usersFile.write( "</table></body></html>")
     usersFile.close()
 
@@ -400,7 +445,8 @@ if(op < 1) {op += 0.1;	tipobj.style.opacity = op;tipobj.style.filter = 'alpha(op
     indexFile.write(_("<li><a href=warnings.html>warnings</a></li>"))
     indexFile.write(_("<li><a href=borders.html>borders</a></li>"))
     indexFile.write(_("<li><a href=unnamed.html>unnamed borders</a></li>"))
-    indexFile.write(_("<li><a href=route.html>routing subgraphs</a></li>"))
+    if self.DoRouting:
+      indexFile.write(_("<li><a href=route.html>routing subgraphs</a></li>"))
     indexFile.write(_("<li>tags: "))
     for alpha in alphabet:
      indexFile.write("\n<a href=tags-%s.html>%s</a> | " % (alpha,_(alpha)))
@@ -409,11 +455,12 @@ if(op < 1) {op += 0.1;	tipobj.style.opacity = op;tipobj.style.filter = 'alpha(op
 """)
 
 
-
+    best = (0,0)
     for i in self.Tiles.keys():
       for j in self.Tiles[i].keys():
         if len(self.Tiles[i][j]) > self.FillTile:
           self.FillTile = len(self.Tiles[i][j])
+	  best = (i,j)
 
 
     self.DatesCSV = open('graph.csv','w')
@@ -438,64 +485,67 @@ if(op < 1) {op += 0.1;	tipobj.style.opacity = op;tipobj.style.filter = 'alpha(op
     indexFile.close()
  
     filename = open('oneline.inc.html','w')
-    filename.write("%s</a><td>%s</td><td>%s</td><td>%.3f</td><td>%.3f</td></tr>" % (self.CountryName,self.LastChange,len(self.User),speed,self.NodesCount/(self.TilesCreated*1.)))
+    filename.write("%s</a><td>%s</td><td>%s</td><td>%.3f</td><td>%.3f</td><td>%s</td></tr>" % (self.CountryName, self.LastChange, len(self.User), speed, \
+         self.NodesCount/(self.TilesCreated*1.),\
+         linkBbox((best[0]/self.ZoomLevel,best[1]/self.ZoomLevel,(best[0]+1)/self.ZoomLevel,(best[1]+1)/self.ZoomLevel), box = "no", text = self.FillTile), \
+))
     filename.close()
 
 ### Making routing
-
-    self.warningsFile = open('route.html','w')
-    self.warningsFile.write(htmlheader % ("",_("Routes")))
-    self.warningsFile.write(htmltablestart)
-    self.warningsFile.write(htmltablerow((_("Number of ways"),_("First way in group"))))
-
-
+    if self.DoRouting:
+      self.warningsFile = open('route.html','w')
+      self.warningsFile.write(htmlheader % ("",_("Routes")))
+      self.warningsFile.write(htmltablestart)
+      self.warningsFile.write(htmltablerow((_("Number of ways"),_("First way in group"))))
 
 
-    wayQ = []
-    wayP = []
-    numRoute = 0
-    self.WayGroups = {0:"",}
-    self.WayGroupsId = {0:"",}
-    numR = len(self.RoutableWays)
-    numP = 0
-    numPrev = 0
-    starttime = time.time()
-    prevtime = starttime
-    while self.RoutableWays:
-      if time.time()-prevtime >= 6:
-	print "still %s %s, %s, %s%%, ETA:%ss (%s/s)"%(len(wayQ),numP, numR-numP, 1.*numP/numR*100., (numR-numP)*(time.time()-prevtime)/(numP-numPrev),   (numP-numPrev)/(time.time()-prevtime))
-	prevtime=time.time()
-	time.sleep(1)
 
-	numPrev = numP
-      if not wayQ:
-        wayQ.append(self.RoutableWays.pop())
-	wayP.reverse()
-	wayP.extend(wayQ)
-	wayP.reverse()
-	print "NewRoutable", numRoute
-	numRoute += 1
-	self.WayGroups[numRoute] = 1
-	self.WayGroupsId[numRoute] = wayQ[0]
 
-      way = self.Ways[wayQ.pop()]
-      #print way, wayQ
-      for node in way:
+      wayQ = []
+      wayP = []
+      numRoute = 0
+      self.WayGroups = {0:"",}
+      self.WayGroupsId = {0:"",}
+      numR = len(self.RoutableWays)
+      numP = 0
+      numPrev = 0
+      starttime = time.time()
+      prevtime = starttime
+      while self.RoutableWays:
+	if time.time()-prevtime >= 6:
+	  print "still %s %s, %s, %s%%, ETA:%ss (%s/s)"%(len(wayQ),numP, numR-numP, 1.*numP/numR*100., (numR-numP)*(time.time()-prevtime)/(numP-numPrev),   (numP-numPrev)/(time.time()-prevtime))
+	  prevtime=time.time()
+	  time.sleep(1)
 
-        if len(self.NodesToWays[node]) != 1:
-	 for tway in self.NodesToWays[node]:
-	  if tway not in wayP:
-	    if tway in self.RoutableWays:
-	      wayQ.append(tway)
-	      wayP.reverse()
-	      wayP.append(tway)
-	      wayP.reverse()
-	      self.WayGroups[numRoute] += 1
-	      self.RoutableWays.remove(tway)
-      numP += 1
-    print  self.WayGroups
-    for i in range(1,numRoute):
-      self.warningsFile.write(htmltablerow((self.WayGroups[i],linkWayMap(self.WayGroupsId[i]))))
+	  numPrev = numP
+	if not wayQ:
+	  wayQ.append(self.RoutableWays.pop())
+	  wayP.reverse()
+	  wayP.extend(wayQ)
+	  wayP.reverse()
+	  print "NewRoutable", numRoute
+	  numRoute += 1
+	  self.WayGroups[numRoute] = 1
+	  self.WayGroupsId[numRoute] = wayQ[0]
+
+	way = self.Ways[wayQ.pop()]
+	#print way, wayQ
+	for node in way:
+
+	  if len(self.NodesToWays[node]) != 1:
+	   for tway in self.NodesToWays[node]:
+	    if tway not in wayP:
+	      if tway in self.RoutableWays:
+		wayQ.append(tway)
+		wayP.reverse()
+		wayP.append(tway)
+		wayP.reverse()
+		self.WayGroups[numRoute] += 1
+		self.RoutableWays.remove(tway)
+	numP += 1
+      print  self.WayGroups
+      for i in range(1,numRoute):
+	self.warningsFile.write(htmltablerow((self.WayGroups[i],linkWayMap(self.WayGroupsId[i]))))
 
 
 ## Making pretty image
@@ -503,10 +553,12 @@ if(op < 1) {op += 0.1;	tipobj.style.opacity = op;tipobj.style.filter = 'alpha(op
     sys.stderr.write('Generating picture')
     png = PNGCanvas(self.MaxLoTile-self.MinLoTile,self.MaxLaTile-self.MinLaTile+1)
     gamma=0.5
-    for i in self.Tiles.keys():
-      for j in self.Tiles[i].keys():
-        if len(self.Tiles[i][j]) > self.FillTile:
-          self.FillTile = len(self.Tiles[i][j])
+
+#    for i in self.Tiles.keys():
+#      for j in self.Tiles[i].keys():
+#        if len(self.Tiles[i][j]) > self.FillTile:
+#          self.FillTile = len(self.Tiles[i][j])
+
     for i in self.Tiles.keys():
       for j in self.Tiles[i].keys():
         c = len(self.Tiles[i][j])*1./self.FillTile
@@ -520,6 +572,7 @@ if(op < 1) {op += 0.1;	tipobj.style.opacity = op;tipobj.style.filter = 'alpha(op
         c = c**gamma
         t = int(c*255)
         png.point(i,png.height-1,[256-t,256-t,t,0xFF])
+   
 
 
 
@@ -550,6 +603,7 @@ if(op < 1) {op += 0.1;	tipobj.style.opacity = op;tipobj.style.filter = 'alpha(op
 			"minlon": 9999,\
 			"maxlat": 0,\
 			"maxlon": 0,\
+			"changesets": {},\
 		  }
     if self.User[uID]["FirstDate"] > uDate:
       self.User[uID]["FirstDate"] = uDate
@@ -557,9 +611,15 @@ if(op < 1) {op += 0.1;	tipobj.style.opacity = op;tipobj.style.filter = 'alpha(op
       self.User[uID]["LastDate"] = uDate
 
 
-  def UserLatLon(self, uid, lat, lon):
-    self.User[uid]["lat"] = (self.User[uid]["lat"] * self.User[uid]["Nodes"] + float(lat))/(self.User[uid]["Nodes"]+1)
-    self.User[uid]["lon"] = (self.User[uid]["lon"] * self.User[uid]["Nodes"] + float(lon))/(self.User[uid]["Nodes"]+1)
+  def UserLatLon(self, uid, cset, lat, lon):
+
+    
+    if cset not in self.User[uid]["changesets"]:
+     self.User[uid]["changesets"][cset] = {"lat":0,"lon":0,"num":0}
+    self.User[uid]["changesets"][cset]["lat"] = (self.User[uid]["changesets"][cset]["lat"] * self.User[uid]["changesets"][cset]["num"] + float(lat))/(self.User[uid]["changesets"][cset]["num"]+1)
+    self.User[uid]["changesets"][cset]["lon"] = (self.User[uid]["changesets"][cset]["lon"] * self.User[uid]["changesets"][cset]["num"] + float(lon))/(self.User[uid]["changesets"][cset]["num"]+1)
+    self.User[uid]["changesets"][cset]["num"] += 1
+
     if lat > self.User[uid]["maxlat"]:
       self.User[uid]["maxlat"] = lat
     if lon > self.User[uid]["maxlon"]:
@@ -581,11 +641,13 @@ if(op < 1) {op += 0.1;	tipobj.style.opacity = op;tipobj.style.filter = 'alpha(op
       self.isInteresting = False
       self.waynodes = []
       self.useTiles=0
-      uid=int(attrs.get('uid',0))
+      uid=attrs.get('uid',attrs.get("user",""))
       self.currentUser = uid
       date = attrs.get('timestamp')
       self.UserTasks(uid, attrs.get('user',""), date)
       day = date[0:10]
+      hour = date[0:15]
+      changeset = attrs.get("changeset", hour)
       if day not in self.DatesGraph:
        self.DatesGraph[day] = [0,0,0]
       
@@ -597,7 +659,7 @@ if(op < 1) {op += 0.1;	tipobj.style.opacity = op;tipobj.style.filter = 'alpha(op
         self.nodeID = id
         lat = float(attrs.get('lat'))
         lon = float(attrs.get('lon'))
-	self.UserLatLon(uid,lat,lon)
+	self.UserLatLon(uid,changeset,lat,lon)
         self.Nodes[id] = (lat,lon)
         tilelat = int(lat*self.ZoomLevel)
         tilelon = int(lon*self.ZoomLevel)
@@ -691,14 +753,15 @@ if(op < 1) {op += 0.1;	tipobj.style.opacity = op;tipobj.style.filter = 'alpha(op
   def endElement(self, name):
     if name == 'way':
       id=self.WayID
-      for i in self.waynodes:
-	if i not in self.NodesToWays:
-	  self.NodesToWays[i] = []
-        self.NodesToWays[i].append(id)
-      if 'highway' in self.tags:
-        if self.tags['highway'] not in ('footway','path','pedestrain'):
-		self.RoutableWays.append(id)
-      self.Ways[id] = self.waynodes
+      if self.DoRouting:
+	for i in self.waynodes:
+	  if i not in self.NodesToWays:
+	    self.NodesToWays[i] = []
+	  self.NodesToWays[i].append(id)
+	if 'highway' in self.tags:
+	  if self.tags['highway'] not in ('footway','path','pedestrain'):
+		  self.RoutableWays.append(id)
+	self.Ways[id] = self.waynodes
       #if self.isInteresting:
       if 'boundary' in self.tags and 'admin_level' in self.tags:                          ###### boundaries
         if self.tags['boundary']=='administrative' and self.tags['admin_level']=='8':

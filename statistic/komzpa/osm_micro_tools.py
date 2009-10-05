@@ -1,4 +1,10 @@
 # -*- coding: utf-8 -*-
+import urllib
+
+ 
+
+
+
 def objN(objType):
    if objType == "user":
     return 1
@@ -18,8 +24,8 @@ def objT(objType):
 
 def linkWay (WayID):
   return "<a href=http://openstreetmap.org/browse/way/%s>%s</a>" % (WayID,WayID)
-def linkBbox (bbox):
-  return "<a href=http://openstreetmap.org/?minlat=%s&minlon=%s&maxlat=%s&maxlon=%s&box=yes>bbox</a>"%(bbox)
+def linkBbox (bbox, box = "yes", text = "bbox"):
+  return "<a href=http://openstreetmap.org/?minlat=%s&minlon=%s&maxlat=%s&maxlon=%s&box=%s>%s</a>"%(bbox + (box,text))
 def linkBboxMarker (bbox, marker):
   a1,a2,a3,a4 = bbox
   a5,a6 = marker
@@ -33,7 +39,7 @@ def linkNode (NodeID):
   return "<a href=http://openstreetmap.org/browse/node/%s>%s</a>" % (NodeID,NodeID)
 
 def linkUser (UserID):
-  return "<a href=http://openstreetmap.org/user/%s>%s</a>" % (UserID,UserID)
+  return '<a href=http://openstreetmap.org/user/%s>%s</a>' % (urllib.urlencode([("",UserID)])[1:],UserID)
 
 def linkRelation (ID):
   return "<a href=http://openstreetmap.org/browse/relation/%s>%s</a>" % (ID,ID)
