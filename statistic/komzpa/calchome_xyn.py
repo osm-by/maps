@@ -4,7 +4,19 @@
 
 import math
 
-Distance = lambda p1, p2: math.sqrt( (p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2 )
+
+      # Calculate the Haversine distance between two points. This is the method
+      # the library uses to calculate the cumulative distance of GPX files. 
+def Distance(p1, p2):
+         RADIUS = 6371 # earth's mean radius in km
+         d_lat = p2[0] - p1[0]
+         d_lon = p2[1] - p1[1]
+         a = math.sin(d_lat/2) * math.sin(d_lat/2) + math.cos(p1[0]) * math.cos(p2[0]) * math.sin(d_lon/2) * math.sin(d_lon/2)
+         c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+         d = RADIUS * c
+         return d
+
+#Distance = lambda p1, p2: math.sqrt( (p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2 )
 
 def calcHome(Points, Percent = 0.1):
 	DistanceMatrix = []

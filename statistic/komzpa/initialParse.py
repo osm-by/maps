@@ -6,7 +6,7 @@ import sys
 import cgi
 import math
 from xml.sax import make_parser, handler
-from pngcanvas import PNGCanvas
+
 import gettext
 
 trans = gettext.GNUTranslations(open("%s/i18n/%s.mo" % (sys.path[0],sys.argv[1])))
@@ -68,10 +68,10 @@ class osmParser(handler.ContentHandler):
     self.prompt = 10000
     self.BorderList = []
     self.BordersCount = 0
-    self.MinLaTile = 1000000
-    self.MaxLaTile = 0
-    self.MinLoTile = 1000000
-    self.MaxLoTile = 0
+    self.MinLaTile = 100000000
+    self.MaxLaTile = -100000000
+    self.MinLoTile = 100000000
+    self.MaxLoTile = -10000000
     self.FillTile = 0
     self.TagsList = {}
     self.ZoomLevel = 200.0  #130
@@ -549,11 +549,16 @@ Nodes: %s Ways: %s Relations: %s Since: %s
 
 
 ## Making pretty image
+    from PIL import Image, ImageDraw
     density = self.NodesCount/self.TilesCreated*1.
     sys.stderr.write('Generating picture')
-    png = PNGCanvas(self.MaxLoTile-self.MinLoTile,self.MaxLaTile-self.MinLaTile+1)
+    width = self.MaxLoTile-self.MinLoTile
+    height = self.MaxLaTile-self.MinLaTile
+    img = Image.new("RGB", (self.MaxLoTile-self.MinLoTile+1,self.MaxLaTile-self.MinLaTile+2), (255,255,255)) 
     gamma=0.5
-
+    #draw = ImageDraw.Draw(img)
+    #draw.text((0,0), "%s"%(self.CountryName) ,fill= (0,0,0))
+    png = img.load()
 #    for i in self.Tiles.keys():
 #      for j in self.Tiles[i].keys():
 #        if len(self.Tiles[i][j]) > self.FillTile:
@@ -563,22 +568,19 @@ Nodes: %s Ways: %s Relations: %s Since: %s
       for j in self.Tiles[i].keys():
         c = len(self.Tiles[i][j])*1./self.FillTile
         c = c**gamma
-
+        
         t = int(c*255)
-        png.point(j-self.MinLoTile,-i+self.MaxLaTile,[256-t,256-t,t,0xFF])
-    for i in range(0, png.width+1):
-        c = i/(png.width+1*1.)
-	#c = math.log(c+1)
-        c = c**gamma
+        png[j-self.MinLoTile,-i+self.MaxLaTile] = (256-t,256-t,t)
+        
+    for i in range(0, width+1):
+        c = i/(width+1*1.)
+	c = c**gamma
         t = int(c*255)
-        png.point(i,png.height-1,[256-t,256-t,t,0xFF])
+        png[i,height+1] = (256-t,256-t,t)
    
 
 
-
-    filename = open("density.png",'wb')
-    filename.write(png.dump())
-    filename.close()
+    img.save("density.png")
     sys.stderr.write('.\n')
 
     self.warningsFile.write('</table></body></html>')
@@ -601,8 +603,8 @@ Nodes: %s Ways: %s Relations: %s Since: %s
 			"lon": 0,\
 			"minlat": 9999,\
 			"minlon": 9999,\
-			"maxlat": 0,\
-			"maxlon": 0,\
+			"maxlat": -9999,\
+			"maxlon": -9999,\
 			"changesets": {},\
 		  }
     if self.User[uID]["FirstDate"] > uDate:

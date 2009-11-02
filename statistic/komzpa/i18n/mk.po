@@ -1,6 +1,5 @@
 # Copyright (C) YEAR ORGANIZATION
 #
-# Darafei Praliaskouski <komzpa@gmail.com>, 2009.
 # Macedonian translation Goran Cvetkovski <goran.cvetkovski@gmail.com>, 2009.
 msgid ""
 msgstr ""
@@ -255,5 +254,3 @@ msgstr "Прва линија во група"
 #: initialParse.py:449
 msgid "Number of ways"
 msgstr "Број на линии"
-
-
