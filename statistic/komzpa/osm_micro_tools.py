@@ -39,7 +39,7 @@ def linkNode (NodeID):
   return "<a href=http://openstreetmap.org/browse/node/%s>%s</a>" % (NodeID,NodeID)
 
 def linkUser (UserID):
-  return '<a href=http://openstreetmap.org/user/%s>%s</a>' % (urllib.urlencode([("",UserID)])[1:],UserID)
+  return '<a href=http://openstreetmap.org/user/%s>%s</a>' % (urllib.urlencode([("",UserID)])[1:].replace("+","%20"),UserID)
 
 def linkRelation (ID):
   return "<a href=http://openstreetmap.org/browse/relation/%s>%s</a>" % (ID,ID)

@@ -3,6 +3,8 @@
 import sys
 import os
 import sys
+reload(sys)
+sys.setdefaultencoding("utf-8")          # a hack to support UTF-8 
 import cgi
 import math
 from xml.sax import make_parser, handler
@@ -19,6 +21,12 @@ import time
 import tagChecker
 from osm_micro_tools import *
 from xml.utils.iso8601 import parse
+
+try:
+        import psyco
+        psyco.full()
+except ImportError:
+        pass
 
 
 
@@ -54,7 +62,7 @@ class osmParser(handler.ContentHandler):
     self.Borders = {}
     self.Places = {}
     self.DatesGraph = {}
-    self.RoutableWays = []
+    self.RoutableWays = set([])
     self.BPlaces = {}
     self.currentUser = ""            # user who created latest obj
     self.currentType = ""            # latest obj type
@@ -84,6 +92,8 @@ class osmParser(handler.ContentHandler):
     self.WaysPassed = []
     self.CountryName = sys.argv[2]                            # Second argument - Country name
     self.DoRouting = True
+    self.packlatlon = lambda lat,lon: lon/abs(lon)*(int(abs(lat*1000000))*2+((lat/abs(lat)+1)/2)+abs(lon/360))
+    self.unpacklatlon = lambda n: ( -(-1)**(int(n)%2)* abs(int(n/2)/1000000.), (n/abs(n))*(abs(n)%1)*360)
     if sys.argv[3] == "norouting":
       self.DoRouting = False
 
@@ -97,7 +107,7 @@ class osmParser(handler.ContentHandler):
 	    tr = tr + "<td align=\"right\">%.3f</td>" % (col,)
 	  else:
 	    tr = tr + "<td>%s</td>" % (col,)
-        return tr+"</tr>"
+        return tr+"</tr>\n"
     self.warningsFile = open('warnings.html','w')
     self.warningsFile.write(htmlheader % (" ", _("Warnings")))
     self.warningsFile.write(htmltablestart);
@@ -112,7 +122,7 @@ class osmParser(handler.ContentHandler):
 
 
 ## Dealing with BorderList
-    self.BorderList.sort((lambda x,y: int((y[0]-x[0])*100000)))
+    self.BorderList.sort((lambda x,y: (int(y[0]>x[0])*2)-1))
     
     self.unnamedBordersFile = open('unnamed.html','w')
 
@@ -275,6 +285,7 @@ var offsetfromcursorY=15 // y offset of tooltip
 var ie=d.all && !window.opera;
 var ns6=d.getElementById && !d.all;
 var tipobj,op=0;
+      var left,top=0;
 function tt(el,txt) { if (d.getElementById('mess').style.visibility=='hidden'){	tipobj=d.getElementById('mess');
 	e = el;	tipobj.innerHTML = '<div style="float:right;align:right;cursor:pointer;cursor:hand;border-bottom:1px solid grey;padding:2px;border-left:1px solid black;" onclick="hide_info(this)">x</div>'+ txt;	el.onmousemove=positiontip;};}
 
@@ -289,15 +300,26 @@ function positiontip(e) { if (d.getElementById('mess').style.visibility=='hidden
 	var winheight=ie? ietruebody().clientHeight : window.innerHeight-20
 	var rightedge=ie? winwidth-event.clientX : winwidth-e.clientX;
 	var bottomedge=ie? winheight-event.clientY-offsetfromcursorY : winheight-e.clientY-offsetfromcursorY;
-	if (rightedge < tipobj.offsetWidth)	tipobj.style.left=curX-tipobj.offsetWidth+"px";
-	else tipobj.style.left=curX+"px";
-	if (bottomedge < tipobj.offsetHeight) tipobj.style.top=curY-tipobj.offsetHeight-offsetfromcursorY+"px"
-	else tipobj.style.top=curY+offsetfromcursorY+"px";};}
+ol = left;
+ot = top;
+      left=0;top=0;
+	if (rightedge < tipobj.offsetWidth)	left=curX-tipobj.offsetWidth;
+	else left=curX;
+	if (bottomedge < tipobj.offsetHeight) top=curY-tipobj.offsetHeight-offsetfromcursorY
+	else top=curY+offsetfromcursorY;
+if (left <= 0){left = 0;};
+if (top <= 0){top = 0;};
+if ( ((ol-left)*(ol-left)+(ot-top)*(ot-top)) >400){
+tipobj.style.left = left;
+tipobj.style.top = top;
+}
+else{ol=left;ot=top;}
+};}
 function ap(el) {el.onmousemove='';op=tipobj.style.opacity;if (op==0){	op = 1;	tipobj.style.opacity = op; tipobj.style.visibility="visible";};
 if(op < 1) {op += 0.1;	tipobj.style.opacity = op;tipobj.style.filter = 'alpha(opacity='+op*100+')';t = setTimeout('appear()', 30);};}</script>
 
 <style>span{cursor:pointer;cursor:hand;} span:hover{color:navy}</style>
-</head><body><div id="mess" style="visibility: hidden;position:absolute;background-color:white; border:1px dotted red; width:350px; "></div><table class="sortable" sytle="width: 100%; border: 1px solid gray" border=1 width=100%>
+</head><body><div id="mess" style="visibility: hidden; position:absolute; background-color:white; border:1px dotted red; width:400px; height: 350px; overflow:auto "></div><table class="sortable" sytle="width: 100%; border: 1px solid gray" border=1 width=100%>
 <tr><td>k<td>num<td>v's""")
      else:
 	filename = open("tags-%s.html"%(alpha,),'a')
@@ -384,6 +406,7 @@ Nodes: %s Ways: %s Relations: %s Since: %s
 	if CSList:
 	 lat, lon = tuple(calcHome(CSList))
 	 escapedName = cgi.escape (self.User[user]["Name"])
+         escapedName = escapedName.replace("+","%20")
          CHLink = "<a href=\"http://openstreetmap.org/?mlat=%f&mlon=%f&minlat=%s&minlon=%s&maxlat=%s&maxlon=%s&box=yes\">%s</a>" % \
 		      (lat, lon, self.User[user]["minlat"], self.User[user]["minlon"], self.User[user]["maxlat"], self.User[user]["maxlon"], _("CalcedHome"))
 	 kml.write(ttt % (escapedName, escapedName, escapedName, self.User[user]["Nodes"], \
@@ -437,6 +460,8 @@ Nodes: %s Ways: %s Relations: %s Since: %s
 
     indexFile = open('index.html','w')
     indexFile.write(htmlheader % (_("Welcome to :"),""))
+
+    indexFile.write("<a href=density.png><img src='density.small.jpg' align='right'></a>");
     indexFile.write(_("<h3>OSM Statistics for %s</h3>") % self.CountryName)
     indexFile.write("<ul>")
     indexFile.write(_("<li><a href=users.html>users</a></li>"))
@@ -450,9 +475,7 @@ Nodes: %s Ways: %s Relations: %s Since: %s
     indexFile.write(_("<li>tags: "))
     for alpha in alphabet:
      indexFile.write("\n<a href=tags-%s.html>%s</a> | " % (alpha,_(alpha)))
-    indexFile.write( """</ul>
-<a href=density.png><img src="density.png" width=100%></a>
-""")
+    indexFile.write( "</ul>")
 
 
     best = (0,0)
@@ -466,8 +489,14 @@ Nodes: %s Ways: %s Relations: %s Since: %s
     self.DatesCSV = open('graph.csv','w')
     daysSorted = self.DatesGraph.keys()
     daysSorted.sort()
+    lastDaysActivity = 0
     for day in daysSorted:
       self.DatesCSV.write("%s\t%s\t%s\t%s\n"%(day,self.DatesGraph[day][0],self.DatesGraph[day][1],self.DatesGraph[day][2]) )
+    lastDay = daysSorted[-1]
+    for day in daysSorted[-15:]:
+     if (abs(parse(lastDay) - parse(day))) <= (2* 604800.0):
+       lastDaysActivity += self.DatesGraph[day][0] + self.DatesGraph[day][1] + self.DatesGraph[day][2]
+    lastDaysActivity =  lastDaysActivity / 14.
     self.DatesCSV.close()
     
     
@@ -485,8 +514,8 @@ Nodes: %s Ways: %s Relations: %s Since: %s
     indexFile.close()
  
     filename = open('oneline.inc.html','w')
-    filename.write("%s</a><td>%s</td><td>%s</td><td>%.3f</td><td>%.3f</td><td>%s</td></tr>" % (self.CountryName, self.LastChange, len(self.User), speed, \
-         self.NodesCount/(self.TilesCreated*1.),\
+    filename.write("%s</a><td>%s</td><td>%s</td><td>%.3f</td><td>%.3f</td><td>%.3f</td><td>%s</td></tr>" % (self.CountryName, self.LastChange, len(self.User), speed, \
+         self.NodesCount/(self.TilesCreated*1.),lastDaysActivity,\
          linkBbox((best[0]/self.ZoomLevel,best[1]/self.ZoomLevel,(best[0]+1)/self.ZoomLevel,(best[1]+1)/self.ZoomLevel), box = "no", text = self.FillTile), \
 ))
     filename.close()
@@ -501,8 +530,8 @@ Nodes: %s Ways: %s Relations: %s Since: %s
 
 
 
-      wayQ = []
-      wayP = []
+      wayQ = set([])
+      wayP = set([])
       numRoute = 0
       self.WayGroups = {0:"",}
       self.WayGroupsId = {0:"",}
@@ -519,14 +548,13 @@ Nodes: %s Ways: %s Relations: %s Since: %s
 
 	  numPrev = numP
 	if not wayQ:
-	  wayQ.append(self.RoutableWays.pop())
-	  wayP.reverse()
-	  wayP.extend(wayQ)
-	  wayP.reverse()
+          popped = self.RoutableWays.pop()
+	  wayQ.add(popped)
+	  wayP.update(wayQ)
 	  print "NewRoutable", numRoute
 	  numRoute += 1
 	  self.WayGroups[numRoute] = 1
-	  self.WayGroupsId[numRoute] = wayQ[0]
+	  self.WayGroupsId[numRoute] = popped
 
 	way = self.Ways[wayQ.pop()]
 	#print way, wayQ
@@ -536,10 +564,8 @@ Nodes: %s Ways: %s Relations: %s Since: %s
 	   for tway in self.NodesToWays[node]:
 	    if tway not in wayP:
 	      if tway in self.RoutableWays:
-		wayQ.append(tway)
-		wayP.reverse()
-		wayP.append(tway)
-		wayP.reverse()
+		wayQ.add(tway)
+		wayP.add(tway)
 		self.WayGroups[numRoute] += 1
 		self.RoutableWays.remove(tway)
 	numP += 1
@@ -579,8 +605,18 @@ Nodes: %s Ways: %s Relations: %s Since: %s
         png[i,height+1] = (256-t,256-t,t)
    
 
-
+    if height>width:
+      oh = height
+      height = 300
+      width = int(width*(1.*height/oh))
+    else:
+      ow = width
+      width = 300
+      height = int(height*(1.*width/ow))
     img.save("density.png")
+    print width, height
+    img = img.resize((width, height),Image.ANTIALIAS)
+    img.save("density.small.jpg")
     sys.stderr.write('.\n')
 
     self.warningsFile.write('</table></body></html>')
@@ -662,7 +698,7 @@ Nodes: %s Ways: %s Relations: %s Since: %s
         lat = float(attrs.get('lat'))
         lon = float(attrs.get('lon'))
 	self.UserLatLon(uid,changeset,lat,lon)
-        self.Nodes[id] = (lat,lon)
+        self.Nodes[id] = self.packlatlon(lat,lon)
         tilelat = int(lat*self.ZoomLevel)
         tilelon = int(lon*self.ZoomLevel)
         if tilelat<self.MinLaTile:
@@ -676,13 +712,13 @@ Nodes: %s Ways: %s Relations: %s Since: %s
 
         if tilelat in self.Tiles:
             if tilelon in self.Tiles[tilelat]:
-              self.Tiles[tilelat][tilelon].append(id)
+              self.Tiles[tilelat][tilelon].add(id)
             else:
-              self.Tiles[tilelat][tilelon] = [id,]
+              self.Tiles[tilelat][tilelon] = set([id,])
               self.TilesCreated += 1
         else:
     	    self.Tiles[tilelat] = {}
-    	    self.Tiles[tilelat][tilelon] = [id,]
+    	    self.Tiles[tilelat][tilelon] = set([id,])
     	    self.TilesCreated += 1
         self.tags['lat'] = lat
         self.tags['lon'] = lon
@@ -762,7 +798,7 @@ Nodes: %s Ways: %s Relations: %s Since: %s
 	  self.NodesToWays[i].append(id)
 	if 'highway' in self.tags:
 	  if self.tags['highway'] not in ('footway','path','pedestrain'):
-		  self.RoutableWays.append(id)
+		  self.RoutableWays.add(id)
 	self.Ways[id] = self.waynodes
       #if self.isInteresting:
       if 'boundary' in self.tags and 'admin_level' in self.tags:                          ###### boundaries
@@ -773,16 +809,16 @@ Nodes: %s Ways: %s Relations: %s Since: %s
            boundary = []
            for i in self.waynodes:
             if i in self.Nodes:
-             lat,lon = self.Nodes[i]
+             lat,lon = self.unpacklatlon(self.Nodes[i])
              boundary.append((lat,lon))
-             if lat>maxlat:
-                maxlat=lat
-             if lat<minlat:
-                minlat=lat
-             if lon>maxlon:
-                maxlon=lon
-             if lon<minlon:
-                minlon=lon
+             if lat > maxlat:
+                maxlat = lat
+             if lat < minlat:
+                minlat = lat
+             if lon > maxlon:
+                maxlon = lon
+             if lon < minlon:
+                minlon = lon
             else:
              #self.warningsFile.write("<tr><td>intersect<td><a href='http://openstreetmap.org/browse/way/%s'>%s</a>" % (self.WayID,self.WayID))
              return 0
@@ -803,15 +839,16 @@ Nodes: %s Ways: %s Relations: %s Since: %s
             if i in self.Tiles:
              for j in range(int(minlon*self.ZoomLevel),int(maxlon*self.ZoomLevel)+1):
               if j in self.Tiles[i]:
-                IDsToCheck.extend(self.Tiles[i][j])
+                IDsToCheck.append((i,j))
            self.Borders[id]={}
            nodesInWay = 0
 	   labelID = 0
 
-           nodesToChk = len(IDsToCheck)
-           for id in IDsToCheck:
+           #nodesToChk = len(IDsToCheck)
+           for i,j in IDsToCheck:
+            for id in self.Tiles[i][j]:
              if id in self.Nodes:
-              nlat,nlon = self.Nodes[id]
+              nlat,nlon = self.unpacklatlon(self.Nodes[id])
               prx, pry = boundary[0]
               isin = False
               ynlon=0
