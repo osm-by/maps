@@ -89,7 +89,7 @@ class osmParser(handler.ContentHandler):
     self.MaxTagsElems = 20
     self.LastChange = ''
     self.FirstChange = 'z'
-    self.WaysPassed = []
+    self.WaysPassed = set([])
     self.CountryName = sys.argv[2]                            # Second argument - Country name
     self.DoRouting = True
     self.packlatlon = lambda lat,lon: lon/abs(lon)*(int(abs(lat*1000000))*2+((lat/abs(lat)+1)/2)+abs(lon/360))
@@ -99,7 +99,7 @@ class osmParser(handler.ContentHandler):
 
 
     htmlheader = "<html><head><title>%%s%s %s: %%s</title><meta http-equiv=Content-Type content=\"text/html; charset=UTF-8\" /><script src=\"http://me.komzpa.net/sorttable.js\"></script></head><body>" % (_("OSM Stats"),self.CountryName)
-    htmltablestart = "<table class=\"sortable\" sytle=\"width: 100%; border: 1px solid gray\" border=1 width=100%>"
+    htmltablestart = "<table class=\"sortable\" style=\"width: 100%; border: 1px solid gray\" border=1 width=100%>"
     def htmltablerow (cols):
         tr = "<tr>"
         for col in cols:
@@ -180,7 +180,7 @@ class osmParser(handler.ContentHandler):
       nodes = 0
       ways = 0
       rels = 0
-      self.WaysPassed.append(top)
+      self.WaysPassed.add(top)
       for ctype, child in self.Address[top]["child"]:
        if ctype == 'node':
          if nodes == 0:
@@ -211,7 +211,8 @@ class osmParser(handler.ContentHandler):
       filename.write("</table>")
       for ctype, child in self.Address[top]["child"]:
        if ctype == 'way':
-         filename.write(linkWay(child))
+         filename.write(linkWay(child)+" ")
+         
       for ctype, child in self.Address[top]["child"]:
        if ctype == 'relation':
          if rels == 0:
@@ -242,8 +243,9 @@ class osmParser(handler.ContentHandler):
       filename.write("<a href=%s.html>%s</a> " %(top, self.Address[top]["tags"].get("name",top) ))
       self.AddrRelLinks = self.AddrRelLinks + "<a href=addr/%s.html>%s</a> " %(top, self.Address[top]["tags"].get("name",top) )
       #print self.Address[top]
-      for aaaaa in self.Address.keys():
+      for aaaaa in self.WaysPassed:
         del self.Address[aaaaa]
+      self.WaysPassed = set([])
 
     filename.close()
 
@@ -319,7 +321,7 @@ function ap(el) {el.onmousemove='';op=tipobj.style.opacity;if (op==0){	op = 1;	t
 if(op < 1) {op += 0.1;	tipobj.style.opacity = op;tipobj.style.filter = 'alpha(opacity='+op*100+')';t = setTimeout('appear()', 30);};}</script>
 
 <style>span{cursor:pointer;cursor:hand;} span:hover{color:navy}</style>
-</head><body><div id="mess" style="visibility: hidden; position:absolute; background-color:white; border:1px dotted red; width:400px; height: 350px; overflow:auto "></div><table class="sortable" sytle="width: 100%; border: 1px solid gray" border=1 width=100%>
+</head><body><div id="mess" style="visibility: hidden; position:absolute; background-color:white; border:1px dotted red; width:400px; height: 350px; overflow:auto "></div><table class="sortable" style="width: 100%; border: 1px solid gray" border=1 width=100%>
 <tr><td>k<td>num<td>v's""")
      else:
 	filename = open("tags-%s.html"%(alpha,),'a')
