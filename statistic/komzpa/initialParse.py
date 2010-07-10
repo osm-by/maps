@@ -272,7 +272,10 @@ class osmParser(handler.ContentHandler):
     alphabet = []
     for k in taglist:
      filename.close()
-     alpha = k[0]
+     if k:
+      alpha = k[0]
+     else:
+      alpha = ""
      if alpha not in ("a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z"):
 	alpha = "other"
 	tt = _("other")

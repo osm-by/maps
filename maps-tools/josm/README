@@ -1,0 +1,5 @@
+josm.py - JOSM startup update utility
+Features:
+  - clean cache of tiles
+  - auto-upgrade to josm latest version
+  - auto-calculation of java memory
