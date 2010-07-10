@@ -2,8 +2,9 @@
 import urllib2
 import os
 import shutil
+import pwd
 
-username = os.getusername()
+username = pwd.getpwuid(os.getuid()).pw_name
 
 dl_path = "/home/%s/.josm/bin/"%username
 tile_cache = "/tmp/JMapViewerTiles_%s"%username
