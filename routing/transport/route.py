@@ -15,15 +15,19 @@ except ImportError:
   pass
 
 points = [320719290, 767183490]
-
+#points = [320718999, 320719007]
+points = [767084810, 767085299]
+points = [767088254, 767085299]
+points = [767088513, 320718913]
+points = [767088513, 767183345]
 
 def main ():
   for point in points:
     print stops[point]["tags"].get("name", stops[point]["coord"])
     for pp in stops[point]["routes"]:
       print "   ", routes[pp]["tags"].get("name", None)
-    for pp in stops[point]["neigh"]:
-      print "      ", stops[pp]["tags"].get("name", stops[pp]["coord"])
+    #for pp in stops[point]["neigh"]:
+    #  print "      ", stops[pp]["tags"].get("name", stops[pp]["coord"])
   """
   Pass 1. Find routes with minimal number of changes.
   Dijkstra. Taken from wikipedia.
@@ -63,24 +67,43 @@ def main ():
 
   
   m = 10000000
-  u = -1
+  u = set()
   
   for route in stops[points[1]]["routes"]:
     if m > dst[route]:
       m = dst[route]
-      u = route
-  print u, dst[u]
-  s = [u]
-  while prv[u]:
-    u = prv[u].pop()  #TODO: multiple routes
-    s.append(u)
-  s.reverse()
-  print s
-  for route in s:
-    print "%-10s  %-10s  %-10s  "%(
+      u = set([route])
+    if m == dst[route]:
+      u.add(route)
+  
 
-    routes[route]["tags"].get("ref", "XX"),
-    routes[route]["tags"].get("name", "????"),
-    route
-    )
+  def rec_search_backway(route, prv):
+    """
+    Function that recursively searches all the ways from end to start.
+    """
+    if not prv[route]:
+      return [[route]]
+    else:
+      s = []
+      for r in prv[route]:
+        b = rec_search_backway(r, prv)
+        #print b 
+        for t in b:
+          t.append(route)
+        s.extend(b)
+      return s
+  s = []
+  for q in u:
+    s.extend(rec_search_backway(q, prv))
+  
+  #print s
+  for t in s:
+   print "----"
+   for route in t:
+     print "%-10s %-10s  %-10s  %-10s  "%(
+     routes[route]["tags"].get("route", "?spaceship"),
+     routes[route]["tags"].get("ref", "XX"),
+     routes[route]["tags"].get("name", "????"),
+     route
+     )
 main()
