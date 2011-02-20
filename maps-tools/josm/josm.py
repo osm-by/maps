@@ -3,6 +3,7 @@ import urllib2
 import os
 import shutil
 import pwd
+import sys
 
 username = pwd.getpwuid(os.getuid()).pw_name
 
@@ -20,6 +21,14 @@ mirror_url = "http://josm.openstreetmap.de/download/"
 josm_filename = "josm-snapshot-%s.jar"
 
 version_there = int(urllib2.urlopen(version_url).read())
+print "Latest available josm: %s"%version_there
+
+try:
+  version_there = int(sys.argv[1])
+  print "But you requested version %s, so I'll load it." % version_there
+except:
+  pass
+
 
 file_here = dl_path+josm_filename%version_there
 file_there = mirror_url+josm_filename%version_there
@@ -43,9 +52,12 @@ if not os.path.exists(file_here):
 if ram == "auto":
   try:
     import psutil
-    fram = (psutil.avail_phymem()+psutil.avail_virtmem()/2)/1024/1024
-    print "Free RAM: %sM" %(fram)
-    ram = str(min(2048, fram))+"M"
+    fram = psutil.avail_phymem()/1024/1024
+    print "Free RAM: %sM"%fram
+    fram = max(256, fram)
+    fram = max(fram,(psutil.avail_phymem()+psutil.avail_virtmem())/1024/1024)
+    print "Using for josm: %sM" %(fram)
+    ram = str(min(1024, fram))+"M"
   except ImportError:
     print "Can't import psutil - please install python-psutil or set 'ram' variable to fixed value."
     print "Using default of 256M"
