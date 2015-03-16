@@ -1,0 +1,1 @@
+Free maps of Belarus from OSM
