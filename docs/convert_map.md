@@ -1,6 +1,6 @@
-# Конвертация карт [http:\\osm.org OpenStreetMap] в форматы Garmin и Navitel с использованием osm2mp #
+# Конвертация карт [OpenStreetMap](http:\\osm.org) в форматы Garmin и Navitel с использованием osm2mp
 
-## установка необходимых программ ##
+## установка необходимых программ
   1. Скачать и установить ActivePerl — http://www.activestate.com/activeperl/
   1. Выполнить Dos-команду \Perl\bin\ppm.bat.
 В окрывшемся, через некоторое время, окне Perl Package Manager (PPM) выбрать в меню View команду All Packages
@@ -19,9 +19,10 @@
   1. Выйти из PPM
   1. скачиваем послед версию osm2mp http://osm2mp.googlecode.com/svn/trunk/osm2mp/ - все файлы в отдельную папку (C:\Perl\site\osm2mpnew)
 
-## конвертация для Navitel ##
+## конвертация для Navitel
 
-### скачиваем файлы конфигурации ###
+### скачиваем файлы конфигурации
+
 скачиваем в папку с osm2mp (C:\Perl\site\osm2mpnew) [белорусские](http://maps-by.googlecode.com/files/osm2mp_conf_by.rar) или [российские](http://osm2navitel.googlecode.com/svn/trunk/) конфиги
 
 отличия
@@ -30,10 +31,12 @@
   1. отличия в приоритетах дорог
   1. отличия в определений грунтовых/негрунтовых дорогах
 
-### устанавливаем GPSMAPEDIT ###
+### устанавливаем GPSMAPEDIT
+
 http://www.geopainting.com/ru/
 
-## непосредственно конвертация ##
+## непосредственно конвертация
+
   1. скачиваем [обработанный дамп карты РБ](ftp://188.40.19.246/osm/dumps/belarus.current.preprocessed.osm.bz2) [OSM](http://osm.org) от [GeoFabric](http://download.geofabrik.de/osm/europe/) (обновляется ежедневно) или другой необходимый [дамп](http://download.geofabrik.de/osm/)
   1. пуск-выполнить cmd
   1. ввести cd C:\Perl\site\osm2mpnew
