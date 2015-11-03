@@ -1,6 +1,10 @@
 # Меню #
 
-  * [Основы работы с Mercurial](http://code.google.com/p/maps-by/wiki/Mercurial)
-  * [Карты OSM Республики Беларусь для Garmin](http://code.google.com/p/maps-by/wiki/garmin)
-  * [Карты OSM Республики Беларусь для Навител](http://code.google.com/p/maps-by/wiki/Navitel)
-  * [Карты OSM Республики Беларусь программы «7 дорог»](http://code.google.com/p/maps-by/wiki/7ways)
+актуальные карты доступны по адресу http://borism346.narod.ru/maps
+
+документация:
+
+  * [Основы работы с Mercurial](Mercurial.md)
+  * [Карты OSM Республики Беларусь для Garmin](garmin.md)
+  * [Карты OSM Республики Беларусь для Навител](Navitel.md)
+  * [Карты OSM Республики Беларусь программы «7 дорог»](7ways.md)
